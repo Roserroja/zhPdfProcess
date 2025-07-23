@@ -1,0 +1,58 @@
+name: Build macOS App
+
+# 每次推送代码时触发
+on:
+  push:
+    branches: [ main ]  # 如果你的默认分支不是 main，请修改
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      # 1. 下载代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 安装 Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'  # 根据你的项目需要修改版本
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: |
+          # 升级 pip
+          python -m pip install --upgrade pip
+          
+          # 安装 PyInstaller
+          pip install pyinstaller
+          
+          # 如果有 requirements.txt，安装项目依赖
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      # 4. 使用 PyInstaller 打包
+      - name: Build executable
+        run: |
+          # 打包命令 - 请将 main.py 改为你的主程序文件名
+          pyinstaller --onefile --clean --name MyApp main.py
+          
+          # 参数说明：
+          # --onefile: 打包成单个文件
+          # --clean: 清理临时文件
+          # --name: 指定输出文件名（改为你想要的名字）
+          # main.py: 你的主程序文件（需要修改）
+          
+          # 如果是 GUI 程序，添加 --windowed 参数：
+          # pyinstaller --onefile --windowed --clean --name MyApp main.py
+
+      # 5. 上传打包结果
+      - name: Upload executable
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-executable
+          path: dist/*
+          retention-days: 30  # 保留 30 天
