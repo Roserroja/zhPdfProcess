@@ -1,0 +1,88 @@
+name: Build macOS CLI App
+
+# 每次推送代码时触发
+on:
+  push:
+    branches: [ master ]  # master 分支
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      # 1. 下载代码
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 安装 Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'  # 根据你的项目需要修改版本
+
+      # 3. 安装依赖
+      - name: Install dependencies
+        run: |
+          # 升级 pip
+          python -m pip install --upgrade pip
+          
+          # 安装 PyInstaller
+          pip install pyinstaller
+          
+          # 如果有 requirements.txt，安装项目依赖
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      # 4. 使用 PyInstaller 打包命令行程序
+      - name: Build CLI executable
+        run: |
+          # 打包命令行程序
+          # 重要：不要使用 --windowed 参数
+          pyinstaller --onefile --clean --name MyApp main.py
+          
+          # 参数说明：
+          # --onefile: 打包成单个可执行文件
+          # --clean: 清理临时文件
+          # --name: 指定输出文件名（改为你想要的名字）
+          # main.py: 你的主程序文件（需要修改）
+          
+          # 确保文件有执行权限
+          chmod +x dist/MyApp
+          
+          # 显示生成的文件信息
+          ls -la dist/
+          file dist/MyApp
+
+      # 5. 创建使用说明
+      - name: Create README
+        run: |
+          cat > dist/README.txt << 'EOF'
+          使用说明：
+          
+          1. 打开终端（Terminal）
+          2. 进入文件所在目录：cd ~/Downloads
+          3. 给文件执行权限（如果需要）：chmod +x MyApp
+          4. 运行程序：./MyApp
+          
+          注意：
+          - 首次运行可能会被 macOS 安全机制阻止
+          - 如果出现"无法验证开发者"提示，请在系统设置中允许运行
+          - 或使用命令：xattr -cr MyApp
+          EOF
+
+      # 6. 压缩文件
+      - name: Compress files
+        run: |
+          cd dist
+          # 将可执行文件和说明一起压缩
+          zip MyApp-macOS-CLI.zip MyApp README.txt
+          cd ..
+
+      # 7. 上传打包结果
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyApp-macOS-CLI
+          path: dist/MyApp-macOS-CLI.zip
+          retention-days: 30  # 保留 30 天
